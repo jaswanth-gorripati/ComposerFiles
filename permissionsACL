@@ -1,0 +1,96 @@
+Basic Syntax:
+	rule <name of the rule> {
+		description:"write what ever you want / explain the rule like ( vehicle owner can have all access over his vehicle)"
+		participant: " here comes the namespace of the participants"
+		operation: ALL ( or CREATE , READ , UPDATE , DELETE ) (nay two can also be defined like CREATE UPDATE )
+		resource: " namespace of the resource"
+		action: ALLOW / DENY
+	}
+
+ (optional) -->
+
+	condition : (v.Grower.getIdentifier() == m.getIdentifier())	
+--> here m -> Participants(m)
+	 v -> resource(v)
+this states that if the invoker (m) is a part of the resource (v) field than he can perform any operation specified 
+ex:-
+	rule canDelete{
+		description: "can delete if he is a owner of the asset"
+		participant(m): "org.acme.shipping.perishable.Grower#billy@gmail.com"
+		operation: DELETE
+		resource(v): "org.acme.shipping.perishable.Contract"
+		condition: (v.grower.getIdentifier() == m.getIDentifier())
+		action: ALLOW
+	}
+
+
+---------
+Note : It works in Top to bottom , so give all permissions go last . any deny Permissions has to go first.
+---------
+
+Namespace : 
+	it can be found in model.cto file's first line . it is important as we need to define partipants by using the namespace. 
+	To target a particular participant then we can use " org.acme.shipping.perishable.Importer " --> all importaers. 
+	For specific importer " org.acme.shipping.pershable.Importer#importer@email.com"
+	Example :- "org.acme.shipping.perishable.Contract#contract@email.com"
+
+Note:- system namespace "org.hyperledger.composer.system"
+
+To target all participents in the network then  "org.hyperledger.composer.Participant" ( similarly all events and Assets)
+
+To target every thing in the network : "org.hyperledger.commposer.system.** " or 
+"org.acme.shipping.perishable.*" --> all participants 
+or "ANY"
+
+---------
+
+Creating an identity through commaand line
+
+----------
+To create an identity 
+1. Need to have a running fabric network 
+	by deploying the .bna file to the network
+	--
+	cd fabric-tools
+	./startFabric.sh
+   now get into folder where we have the .bna file and run the following command:
+(note: may be old command check with docs)
+
+	composer network deploy -a perishable-network.bna -p hlfv1 -i PeerAdmin -s randomString -A admin -S 
+this command Deploys the bussiness network 
+
+2. Now we can create  participants
+form command line
+	composer participants add -p hlfv1 -n 'perishable-network' -i admin -s adminpw -d '{"$class":"org.hyperledger.composer.system.NetworkAdmin","participantId":"jaswanth"}'
+
+This command creates the identity ( but in order to get this into the identity list we need to issue the identity)
+
+Note :to check the identities
+	composer identity list -p hlfv1 -n 'perishable-network -i admin -s adminpw
+
+To issue the identity 
+	
+	composer identity issue -p hlfv1 -n 'perishable-network'-i admin -s adminpw -u jaswanth -a "resource:org.hyperledger.composer.system.NetworkAdmin#jaswanth" ---issuer
+
+this command gives the secret for the identity
+
+To know the composer up and running ..
+	composer network ping -p hlfv1 -n 'perishable-network' -i jaswanth -s given_secret
+
+now the idenetity list contains the user jaswanth.
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
