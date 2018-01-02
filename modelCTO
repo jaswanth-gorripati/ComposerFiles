@@ -1,0 +1,103 @@
+contains 
+	1. namespace
+	2. participant
+	3. asset
+To create .bna file 
+command : 
+	composer archive create --sourceType dir --source . -a ./dist/<foldername>
+	or
+	npm install ( it runs the prepublish in scripts in package.json)
+
+it contains only single namespace
+all other are called resources
+
+"Class Definitions"
+	Assets
+	Transactions
+	Participants
+we also have
+	Events
+	Enumerated
+	Concepts
+------------
+DataTypes
+	1. Strings
+	2. Double
+	3. Integer
+	4. Long
+	5. DateTime
+	6. Boolean
+---------------
+Creating a Participant
+ex: 
+	participant Grower identified by email{
+		o String email
+		o Double accountBalance	
+	}
+----------
+To avoid repetativeness in code we can use " Concepts"
+
+abstract participant Bussiness identified by email{
+	o String email
+	o Address address
+	o Double accountBalance
+}
+
+to add anything more to it we use concept like below 
+
+	concept Address{
+		o String city optional
+		o String country 
+		o String street optional
+		o String zip optional	
+	}
+Now the participant definition changes as follow:
+
+participant Grower extends Bussiness{
+}
+
+
+
+
+if specified " optional " then we may or maynot give those values.
+
+------------
+Creating an asset
+ex:
+	asset Contract detified by contractId{
+		o String contractID
+		--> Grower grower
+		o DateTime arrivalDtaeTime
+		o Double unitPrice
+		o Double minTemperature	
+	}
+
+-----
+creating an enumerated
+ex: 
+	asset Shipment identified by shipmentId{
+		o String shipmentId
+		o ProductType type
+		o ShipmentStatus status
+		o Long unitCount
+		--> Contract contract	
+	}
+	enum ProductType{
+		o BANANAS
+		o APPLES
+		o PEARS	
+	}
+	enum ShipmentStatus{
+		o CREATED
+		o IN_TRANSIT
+		o ARRIVED	
+	}
+
+
+
+
+
+
+
+
+

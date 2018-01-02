@@ -1,0 +1,201 @@
+Composer Javascript Api 
+	1. Composer-Common
+
+		Base Classes
+
+	2. Composer-Runtime
+		getFactory()
+			factory.newConcept()
+			factory.newEvents()
+			factory.newRelstionship()
+			factory.newResouce()
+			factory.newTransaction()
+		getParticipantRegistry() and getAssetRegistry()
+			registry.add()
+			registry.addAll()
+			registry.get()
+			registry.remove()
+			registry.update()
+	3. Composer-Admin
+		Identity Management
+
+	4. Composer-Client
+		Command line operations
+--------------
+Defiining a Transaction
+ex: 	
+	transaction <transaction_name>{
+	}
+
+note : in logic.js we have to declare some @params in comment section above transaction logic
+ex: 
+	/**
+	 * this is where description goes.
+	 * @params {org.acme.shipping.perishable.<transaction_name>} <name_of_the_function> 
+	 * @transaction
+	 */
+	function <name_of_the_function>(parameter){
+		
+	}
+ex:- creating all the participants and assets from transaction
+
+/**
+ * this is where description goes.
+ * @params {org.acme.shipping.perishable.OurSetupDemo} ourSetupDemo 
+ * @transaction
+ */
+function ourSetupDemo(ourSetupDemo){
+	var factory = getFactory(); // first needs to create a factory 
+
+	var NS = 'org.acme.shipping.perishable"; // Namespace to use later in the code
+	
+	var grower = factory.newResource(NS,'Grower','farmer@email.com); // declaring a Grower as defined in the participant like grower is identified by email
+
+var growerAddress = factory.newConcept(NS, 'Address') // getting Address concept
+
+growerAddress.country = 'USA' // country is must in addresss concept
+grower.address = growerAddress;
+grower.accountBalance = 0;
+
+// creating a contract 
+
+var contract = factory.newResource(NS,'Contract','CON_001'); //getting the contract resouce
+
+contract.grower = factory.newRelationship(NS,'Grower','farmer@email.com'); // as the grower in the contract is a relationship we are defining a relationship
+
+var tomarrow = ourSetupDemo.timestamp // every tx has a timestamp in it.
+
+tomorrow.setDate(tomarrow.getDate()+1); // defines arrival time to 2maro from the creation of the contract
+
+contract.arrivalDateTime = tomarrow;
+contract.minTemperature = 2;
+
+// as of now all are stored in the variables .. now we need to commit it to network .. we do this by using javascript promises
+
+
+return getParticipantRegistry(NS + '.Grower') // it returns all the growers that we registerd.
+.then(function (growerRegistry){
+	return growerRegistry.addAll([grower]);
+})
+.then(function(){
+	return getAssetRegistry(NS + '.Contract');
+})
+.then(function(contractRegistry){
+	return contractRegistry.addAll([contract]);
+});
+	
+}
+
+
+---------------
+ creating another transaction 
+
+in model.cto file
+
+	abstract transaction ShipmentTransaction{
+		--> Shipment sihpment
+	}
+	transaction TemperatureReading extends ShipmentTransaction{
+		o Double cetigrade
+	}
+
+---------
+creating logic to TemperatureReading transaction
+
+/**
+ * A temperatur readinf on one of the perishable shipments
+ * @param {org.acme.shipping.perishable.TemperatureReading} temperatureReading
+ * @transaction
+ */
+
+function temperatureReading(temperatureReading){
+	var shipment = temperatureReading.shipment;
+	console.log("adding temperatur of '+temperatureReading.centigrade+' to shipment '+shipment+') // we can use console.log 
+	
+	if(shipment.temperatureReadings){
+		shipment.teperatureReadings.push(temperatureReading);	
+	}else{
+		shipment.temperatureReadings = [temperatureReading];
+	}
+
+return getAssetRegistry('org.acme.shipping.perishable.Shipment')
+.then(function(shipmentRegistry){
+	return shipmentRegistry.updtae(shipment);
+});
+}
+
+
+----------------
+creating a transaction to transfer funds based on conditions
+
+in model.cto file we are adding an another transaction called ShipmentReceived
+
+transaction ShipmentReceived extends ShipmentTransaction{
+
+}
+
+--- logic for ShipmentReceived in logic.js
+
+/**
+ * A shipment has been received  and funds needc to be allocated
+ * @param {org.acme.shipping.perishable.ShipmentReceived} shipmentReceived
+ * @transaction
+ */
+
+function shipmentReceived(shipmentReceived){
+	
+	var contract = shipmentReceived.shipment.contract; 
+	var shipment =	shipmentReceived.shipment;
+	var money = contract.unitPrice * shipment.unitCount; // money without penalties
+
+	console.log('received at : ' + shipmentReceived.timestamp);
+	
+	shipment.status = 'ARRIVED';
+	
+	if(shipmentReceived.timestamp > contract.arrivalDateTime){
+		money = 0;
+	}else {
+		if(shipment.temperaturReadings){
+			// get the lowest and highest temperatures
+			shipment.temperatureReadings.sort(function(a,b){
+			return (a.centigrade - b.centigrade);
+		}
+		var lowestReading = shipment.temperatureReadings[0];
+		var highestReading= shipment.temperatureReadings[shipment.temperatureReadings.length-1];
+		var penalty = 0;
+		if (lowestReading.centigrade < contract.minTemperature){
+			penalty += ( contract.minTemperature - lowestReading.centigrade) * contract.minPenaltyFactor;
+		}
+		if (highestReading.centigrade < contract.maxTemperature){
+			penalty += ( contract.maxTemperature - highestReading.centigrade) * contract.maxPenaltyFactor;
+		}
+		money -= (penalty *shipment.unitCount);
+		
+		if(money <0){
+			money = 0;
+		}
+		
+	}
+	// Updating the balances
+	contract.grower.accountBalance += money;
+	contract.importer.accountBalance -= money;
+	return getParticipantRegistry('org.acme.shipping.perishable.Grower')
+	.then(function (growerRegistry){
+		return growerRegistry.update(contract.grower);
+	})
+	.then(function(){
+		return getParticipantRegistry('org.acme.shipping.perishable.Grower');
+	})
+	.then (function(importerRegistry){
+		return importerRegistry.updtae(contract.Importer):
+	})
+	.then(function(){
+		return getAssetRegistry('org.acme.shipping.perishable.Shippment');
+	})
+	.then(function (shipmentRegistry){
+		return shipmentRegistry.update(shipment);
+	});
+
+}
+
+
